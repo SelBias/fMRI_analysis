@@ -2,6 +2,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+'''
+These functions visualize some results, such as training/validation/test loss during training. 
+These enable us to check whether neural networks training is going well or not. 
+'''
+
 def loss_plot(result, k_fold, h_dim, num_layers, num_epoch, learning_rate, seed, title = "loss_plot") : 
     train_loss = np.asarray(result[1]).mean(axis = 0)
     test_loss = np.asarray(result[2]).mean(axis = 0)
@@ -16,78 +21,41 @@ def loss_plot(result, k_fold, h_dim, num_layers, num_epoch, learning_rate, seed,
 
     ax = fig.add_subplot(2,3,2)
     for ind in range(k_fold) : 
-        plt.plot(range(len(result[1][ind])), result[1][ind])
+        plt.plot(range(len(result[2][ind])), result[2][ind])
     plt.xlabel("Iterations")
-    plt.title("Train loss near 0")
-    plt.ylim(0, 500)
+    plt.title("Validation loss")
 
     ax = fig.add_subplot(2,3,3)
-    plt.plot(range(train_loss.shape[0]), train_loss)
+    for ind in range(k_fold) : 
+        plt.plot(range(len(result[3][ind])), result[3][ind])
     plt.xlabel("Iterations")
-    plt.title("Train loss")
-    plt.ylim(0, 500)
+    plt.title("Test loss")
+
 
     ax = fig.add_subplot(2,3,4)
     for ind in range(k_fold) : 
-        plt.plot(range(num_epoch), result[2][ind])
-    plt.xlabel("Epochs")
-    plt.title("Test loss")
+        plt.plot(range(len(result[1][ind])), result[1][ind])
+    plt.xlabel("Iterations")
+    plt.title("Train loss near 0")
+    plt.ylim(0, 500)
 
     ax = fig.add_subplot(2,3,5)
     for ind in range(k_fold) : 
-        plt.plot(range(num_epoch), result[2][ind])
-    plt.xlabel("Epochs")
-    plt.title("Test loss near 0")
+        plt.plot(range(len(result[2][ind])), result[2][ind])
+    plt.xlabel("Iterations")
+    plt.title("Validation loss near 0")
     plt.ylim(0, 500)
 
     ax = fig.add_subplot(2,3,6)
-    plt.plot(range(test_loss.shape[0]), test_loss)
-    plt.xlabel("Epochs")
-    plt.title("Test loss")
+    for ind in range(k_fold) : 
+        plt.plot(range(len(result[3][ind])), result[3][ind])
+    plt.xlabel("Iterations")
+    plt.title("Test loss near 0")
     plt.ylim(0, 500)
 
     fig.savefig(f'{title}/h{h_dim}_layer{num_layers}_lr{learning_rate}_SEED{seed}.png')
     
     return fig
-
-def loss_plot2(result, k_fold, h_dim, num_layers, num_epoch, learning_rate, seed, title = "loss_plot") : 
-    train_loss = np.asarray(result[1]).mean(axis = 0)
-    test_loss = np.asarray(result[2]).mean(axis = 0)
-
-    fig = plt.figure(figsize = (9, 6))
-
-    ax = fig.add_subplot(2,2,1)
-    for ind in range(k_fold) : 
-        plt.plot(range(len(result[1][ind])), result[1][ind])
-    # plt.xlabel("Iterations")
-    plt.title("Train loss")
-
-    ax = fig.add_subplot(2,2,2)
-    for ind in range(k_fold) : 
-        plt.plot(range(len(result[1][ind])), result[1][ind])
-    # plt.xlabel("Iterations")
-    plt.title("Train loss near 0")
-    plt.ylim(0, 1)
-
-    ax = fig.add_subplot(2,2,3)
-    for ind in range(k_fold) : 
-        plt.plot(range(num_epoch), result[2][ind])
-    # plt.xlabel("Epochs")
-    plt.title("Test loss")
-
-    ax = fig.add_subplot(2,2,4)
-    for ind in range(k_fold) : 
-        plt.plot(range(num_epoch), result[2][ind])
-    # plt.xlabel("Epochs")
-    plt.title("Test loss near 0")
-    plt.ylim(0, 1)
-
-    fig.savefig(f'{title}/h{h_dim}_layer{num_layers}_lr{learning_rate}_SEED{seed}.png')
-    
-    return fig
-
-
-
 
 def binary_plot(normal_age, patient_age, normal_pred, patient_pred, title = "temp.png") : 
     x, y = normal_age, normal_pred

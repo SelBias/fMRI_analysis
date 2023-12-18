@@ -8,13 +8,32 @@ from torch.utils.data import DataLoader
 # import seaborn as sns
 # from sklearn.metrics import roc_curve
 
+'''
+make_reproducibility    : set every seed for reproducibility
 
+MYTensorDataset         : define an arbitrary torch dataset
+
+make_masking            : make masking 
+make_arbitrary_masking  : make arbitrary masking 
+k_fold_index            : generate a tuple of indice for k-fold cross validation
+
+make_decision           : For K > 2, based on given prediction, return a predicted class vector
+make_binary_decision    : For K = 2, based on given prediction, return a predicted class vector
+
+multiclass_accuracy     : For K > 2, compute a classifion accuracy
+binary_accuracy         : For K = 2, compute a classifion accuracy
+
+contingency_table       : Generate contingency table for given true classes and predicted classes
+
+
+'''
 def make_reproducibility(seed):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
+
 
 class MYTensorDataset(torch.utils.data.Dataset) :
     def __init__(self, *tensors) -> None:
@@ -35,40 +54,44 @@ def make_masking(N, train_N, SEED = 1000) :
     mask[rand_indice] = True
     return indice[mask], indice[~mask]
 
-
-def make_arbitrary_masking(N, ind) : 
+def make_arbitrary_masking(N, ind, randomize = False, SEED = None) : 
     indice = np.arange(0,N)
     mask = np.zeros(N, dtype=bool)
     mask[ind] = True
+    if randomize is True : 
+        if SEED is not None : 
+            np.random.seed(SEED)
+        np.random.shuffle(mask)
     return indice[~mask], indice[mask]
 
 
-
-def k_fold_index(N = 150, k = 10, randomize = True, SEED = 10) : 
+def k_fold_index(N = 150, k = 10, randomize = True, SEED = None) : 
     indice = np.arange(0,N)
     if randomize is True : 
-        np.random.seed(SEED)
+        if SEED is not None : 
+            np.random.seed(SEED)
         np.random.shuffle(indice)
     result = []
     for fold in np.split(indice, k) : 
         result.append(make_arbitrary_masking(N, fold))
     return result
 
-def seq_k_fold_index(N_data = 1574, N_subj = 150, cum_index = None, k = 10, SEED = None) : 
-    indice_data = np.arange(0, N_data)
-    indice_subj = np.arange(0, N_subj)
+# def seq_k_fold_index(N_data = 1574, N_subj = 150, cum_index = None, k = 10, randomize = True, SEED = None) : 
+#     indice_data = np.arange(0, N_data)
+#     indice_subj = np.arange(0, N_subj)
 
-    if SEED is not None : 
-        np.random.seed(SEED)
-        np.random.shuffle(indice_subj)
+#     if randomize is True : 
+#         if SEED is not None : 
+#             np.random.seed(SEED)
+#         np.random.shuffle(indice_subj)
 
-    result = []
-    for fold in np.split(indice_subj, k) : 
-        mask = np.zeros_like(indice_data, dtype = bool)
-        for ind in fold : 
-            mask[cum_index[ind]:cum_index[ind+1]] = True
-        result.append([indice_data[~mask], indice_data[mask]])
-    return result
+#     result = []
+#     for fold in np.split(indice_subj, k) : 
+#         mask = np.zeros_like(indice_data, dtype = bool)
+#         for ind in fold : 
+#             mask[cum_index[ind]:cum_index[ind+1]] = True
+#         result.append([indice_data[~mask], indice_data[mask]])
+#     return result
 
 
 def make_decision(prediction, K = 3, order = None, threshold = None) : 
@@ -95,6 +118,12 @@ def make_binary_decision(prediction, threshold = 0.5) :
 #         decision[torch.sum(prediction[:,0:(i+1)], dim = 1) < threshold[i]] = i + 1
 #     return decision
 
+def multiclass_accuracy(decision, target, K = 3) : 
+        return (decision == target).float().mean().item()
+
+def binary_accuracy(prediction, target, threshold = 0.5) : 
+    return ((prediction - threshold) * (target * 2 - 1) > 0).float().mean().item()
+
 def contingency_table(decision, target, K = 3) : 
     output = torch.zeros([K,K])
     for i in range(K) :
@@ -102,10 +131,4 @@ def contingency_table(decision, target, K = 3) :
             output[i][j] = torch.sum(torch.logical_and(decision == j, target == i))
     return output
 
-
-def multiclass_accuracy(decision, target, K = 3) : 
-        return (decision == target).float().mean().item()
-
-def binary_accuracy(prediction, target, threshold = 0.5) : 
-    return ((prediction - threshold) * (target * 2 - 1) > 0).float().mean().item()
 
