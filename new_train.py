@@ -23,9 +23,9 @@ def normal_age_pretrain(
     h_dim = 50, num_layers = 2, num_epoch = 200, batch_size = 16, 
     learning_rate = 1e-3, weight_decay = 1e-5, patience = 10) : 
 
-    if SEED is not None : 
-        make_reproducibility(SEED)
-
+    # if SEED is not None : 
+    #     make_reproducibility(SEED)
+    
     num_fold = len(ind_list)
 
     test_pred_list = torch.zeros(N)
@@ -36,6 +36,7 @@ def normal_age_pretrain(
     # K-fold CV start
     for fold in range(num_fold) : 
         print(f"{fold}th fold starting.")
+        make_reproducibility(SEED + fold)
 
         # Initialize model and optimizer
         model = age_estimator(h_dim, num_layers).to(DEVICE)
@@ -125,12 +126,13 @@ def normal_age_pretrain(
 
 
 def patient_age_pretrain(normal_train_dataset, normal_val_dataset, patient_dataset, 
-                      DEVICE, SEED = None, train_N = 50, val_N = 20, patient_N = 80,  
+                      DEVICE, SEED, train_N = 50, val_N = 20, patient_N = 80,  
                       h_dim = 50, num_layers = 2, num_epoch = 200, batch_size = 8, 
                       learning_rate = 1e-3, weight_decay = 1e-2, patience = 10) : 
 
-    if SEED is not None : 
-        make_reproducibility(SEED)
+    # if SEED is not None : 
+    #     make_reproducibility(SEED)
+    make_reproducibility(SEED)
 
     train_loss_list = []
     val_loss_list = []
@@ -208,13 +210,13 @@ def patient_age_pretrain(normal_train_dataset, normal_val_dataset, patient_datas
 
 # Patient detection with age-pretrain
 def main_train(full_dataset, module_type, DEVICE, ind_list, 
-               SEED = None, N = 150, K = 3, 
+               SEED, N = 150, K = 3, 
                h_dim = 50, num_layers = 2, num_epoch = 200, batch_size = 8, 
                weight = None, p_star = None, eps = 1e-8, 
                learning_rate = 1e-3, weight_decay = 1e-2, patience = 10, experiment_name='exp') : 
 
-    if SEED is not None : 
-        make_reproducibility(SEED)
+    # if SEED is not None : 
+    #     make_reproducibility(SEED)
 
     test_pred_list_1 = torch.zeros([N, K])
     test_pred_list_2 = torch.zeros([N, K])
@@ -234,6 +236,8 @@ def main_train(full_dataset, module_type, DEVICE, ind_list,
 
     for fold in range(num_fold) : 
         print(f"{fold}th fold starting.")
+        make_reproducibility(SEED + fold)
+
         module = module_type(h_dim, num_layers, K).to(DEVICE)
         optimizer = optim.Adam(module.parameters(), lr=learning_rate, weight_decay = weight_decay)
 
@@ -313,6 +317,13 @@ def main_train(full_dataset, module_type, DEVICE, ind_list,
 
         test_pred_list_1[test_indice] = test_prediction.squeeze(1)
 
+        # Checkpoint 1
+        checkpoint1 = { 
+            'model': best_module_1.state_dict(),
+            'optimizer': optimizer.state_dict()
+        }
+        torch.save(checkpoint1, f'./results/{experiment_name}_{fold}_pretrain.pth')
+
 
         # training using age_difference
         best_module_2 = copy.deepcopy(module)
@@ -379,11 +390,18 @@ def main_train(full_dataset, module_type, DEVICE, ind_list,
 
 
         test_pred_list_2[test_indice] = test_prediction.squeeze(1)
+        
+        checkpoint2 = { 
+            'model': best_module_2.state_dict(),
+            'optimizer': optimizer.state_dict()
+        }
+        torch.save(checkpoint2, f'./results/{experiment_name}_{fold}_age_train.pth')
 
         os.makedirs('./results', exist_ok=True)
         torch.save(best_module_1.state_dict(), f'./results/{experiment_name}_{fold}_pretrained_model.pt')
         torch.save(best_module_2.state_dict(), f'./results/{experiment_name}_{fold}_trained_model.pt')
     
-    return [test_pred_list_1, train_loss_list_1, val_loss_list_1, test_loss_list_1], [test_pred_list_2, train_loss_list_2, val_loss_list_2, test_loss_list_2]
+    return [[test_pred_list_1, train_loss_list_1, val_loss_list_1, test_loss_list_1], 
+            [test_pred_list_2, train_loss_list_2, val_loss_list_2, test_loss_list_2]]
 
 
