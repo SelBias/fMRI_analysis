@@ -80,9 +80,10 @@ class classifier(nn.Module) :
             nn.Dropout(p=0.3), 
             nn.Linear(2 * h_dim, h_dim), 
             nn.LeakyReLU(), 
-            nn.Dropout(p=0.3), 
-            nn.Linear(h_dim, K)
+            nn.Dropout(p=0.3)
         )
+
+        self.last_layer1 = nn.Linear(h_dim, K)
 
         self.fc2 = nn.Sequential(
             nn.Linear(1, h_dim), 
@@ -91,8 +92,9 @@ class classifier(nn.Module) :
             nn.Linear(h_dim, h_dim), 
             nn.LeakyReLU(), 
             nn.Dropout(p=0.3), 
-            nn.Linear(h_dim, K, bias = False)
         )
+
+        self.last_layer2 = nn.Linear(h_dim, K, bias=False)
 
     def pre_forward(self, kcore, mmse = None, age = None) : 
         output, (_, _) = self.lstm(kcore)                   # output : [ N x L x H ]
@@ -103,8 +105,23 @@ class classifier(nn.Module) :
             mmse.unsqueeze(1) / 30.0, 
             age.unsqueeze(1) / 80.0
         ], dim = 1)                                         # output : [ N x (H+2) ]
-        output = self.fc1(output)                  
+        output = self.last_layer1(self.fc1(output))                  
         return F.softmax(output)
+    
+    def get_last_hidden_layer(self, kcore, mmse = None, age = None) : 
+        output, (_, _) = self.lstm(kcore)                   # output : [ N x L x H ]
+        attn_weight = self.attention(output).unsqueeze(1)   # weight : [ N x 1 x L ]
+        output = torch.bmm(attn_weight, output).squeeze(1)  # output : [ N x H ]
+        output = torch.cat([
+            output, 
+            mmse.unsqueeze(1) / 30.0, 
+            age.unsqueeze(1) / 80.0
+        ], dim = 1)                                                  
+        return self.fc1(output)
+    
+    
+    # def get_last_hidden_layer2(self, age_diff) : 
+    #     return self.fc2(age_diff)
 
 
     def forward(self, kcore, mmse = None, age = None, age_diff = None) : 
@@ -116,7 +133,7 @@ class classifier(nn.Module) :
             mmse.unsqueeze(1) / 30.0, 
             age.unsqueeze(1) / 80.0
         ], dim = 1)                                         # output : [ N x (H+2) ]
-        output = self.fc1(output) + self.fc2(age_diff.unsqueeze(1))        
+        output = self.last_layer1(self.fc1(output)) + self.last_layer2(self.fc2(age_diff.unsqueeze(1)))
         return F.softmax(output)
 
 
